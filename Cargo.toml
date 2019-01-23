@@ -1,0 +1,13 @@
+[package]
+name = "botnet"
+version = "0.1.0"
+authors = ["Vzaa <Vzaa@users.noreply.github.com>"]
+edition = "2018"
+
+[dependencies]
+percent-encoding = "1.0.1"
+
+[profile.release]
+opt-level = "z"
+lto = true
+debug = false
