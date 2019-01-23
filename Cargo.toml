@@ -5,7 +5,6 @@ authors = ["Vzaa <Vzaa@users.noreply.github.com>"]
 edition = "2018"
 
 [dependencies]
-percent-encoding = "1.0.1"
 
 [profile.release]
 opt-level = "z"
