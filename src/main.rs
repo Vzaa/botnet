@@ -1,13 +1,16 @@
+use std::env;
 use std::io::prelude::*;
 use std::io::Read;
 use std::net::{TcpListener, TcpStream};
 use std::process::{Command, Stdio};
-use std::env;
+use std::time::Duration;
 
 use botnet::ThreadPool;
 
 fn main() {
-    let addr = env::args().nth(1).unwrap_or_else(|| "127.0.0.1:7878".to_owned());
+    let addr = env::args()
+        .nth(1)
+        .unwrap_or_else(|| "127.0.0.1:7878".to_owned());
     let listener = TcpListener::bind(&addr).unwrap();
     let pool = ThreadPool::new(4);
 
@@ -39,6 +42,7 @@ fn decode_percent(buf: &[u8]) -> Option<String> {
 
     while let Some(c) = iter.next() {
         match c {
+            b'+' => s.push(' '),
             b'%' => {
                 let mut a: u8 = *iter.next()?;
                 let mut b: u8 = *iter.next()?;
@@ -47,7 +51,7 @@ fn decode_percent(buf: &[u8]) -> Option<String> {
                 b = ascii_to_num(b)?;
 
                 s.push(char::from((a << 4) + b));
-            },
+            }
             b => s.push(char::from(*b)),
         }
     }
@@ -79,6 +83,7 @@ fn handle_connection(mut stream: TcpStream) -> Option<()> {
     let mut in_buffer = [0; 1024];
     let mut out_buffer = [0; 1024];
     let mut bytes = 0;
+    stream.set_read_timeout(Some(Duration::new(5, 0))).ok()?;
 
     loop {
         let buf = &mut in_buffer[bytes..];
@@ -98,8 +103,8 @@ fn handle_connection(mut stream: TcpStream) -> Option<()> {
     let cmd = if let Some(c) = get_cmd(&in_buffer) {
         c
     } else {
-        let status_line = b"HTTP/1.1 404 NOT FOUND\r\n\r\nError";
-        stream.write(status_line).ok()?;
+        let status_404 = b"HTTP/1.1 404 NOT FOUND\r\nContent-Length: 5\r\n\r\nError";
+        stream.write(status_404).ok()?;
         stream.flush().ok()?;
         return None;
     };
