@@ -5,6 +5,7 @@ authors = ["Vzaa <Vzaa@users.noreply.github.com>"]
 edition = "2018"
 
 [dependencies]
+tokio = { version = "0.2", features = ["full"] }
 
 [profile.release]
 opt-level = "z"
